@@ -218,6 +218,7 @@ void clickingThread() {
     auto cpsStartTime = std::chrono::steady_clock::now();
     static bool wasPressed = false;
     static auto pressStartTime = std::chrono::steady_clock::now();
+    static bool lastCpsUpdateState = false;
     
     while (g_running) {
         bool shouldClick = false;
@@ -229,11 +230,15 @@ void clickingThread() {
             bool rightPressed = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
             bool targetButtonPressed = g_leftClick ? leftPressed : rightPressed;
             
+            // Detectar cuando se presiona el botón por primera vez
             if (targetButtonPressed && !wasPressed) {
                 pressStartTime = std::chrono::steady_clock::now();
             }
+            
+            // Actualizar el estado de presionado
             wasPressed = targetButtonPressed;
             
+            // Solo hacer clic si está activo, Minecraft está en primer plano, y el botón está presionado
             if (g_active && isWindowActive() && targetButtonPressed) {
                 auto timeSincePress = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - pressStartTime).count();
@@ -269,10 +274,14 @@ void clickingThread() {
                 std::uniform_int_distribution<int> randomSleep(1, 5);
                 Sleep(randomSleep(g_rng));
             }
+            
+            lastCpsUpdateState = true;
         } else {
-            if (!shouldClick) {
+            // Solo actualizar CPS a 0 cuando cambie el estado de clicking
+            if (lastCpsUpdateState) {
                 g_currentCps = 0.0;
                 PostMessage(g_hWnd, WM_USER + 1, 0, 0);
+                lastCpsUpdateState = false;
             }
         }
         
